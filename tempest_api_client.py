@@ -27,8 +27,9 @@ def get_device(token: str, device_id: str) -> dict:
 
 tok = get_token()
 stations = get_stations(tok)
-print("stations:")
+
 for station in stations:
     for device in station['devices']:
-        print(f"device data for {device}")
-        print(get_device(device_id=device['device_id'], token=tok))
+        did = device['device_id']
+        print(f"device data for {did}:")
+        print(get_device(device_id=did, token=tok))
