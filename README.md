@@ -15,10 +15,9 @@ The following instructions assume you are running on MacOS.
 ### Steps
 1. Clone the repository into a directory on your local machine.
 2. Set the python version: `pyenv local 3.11.12`
-3. Follow the steps at https://apidocs.tempestwx.com/reference/quick-start to generate a Personal Access Token.  
+3. Follow the steps at https://apidocs.tempestwx.com/reference/quick-start to generate a Personal Access Token.
 4. Create a .envrc file in the root directory of your project and add the following text, substituting your token from the previous step for {your token}: `export TEMPEST_TOKEN={your token}`
 5. `direnv allow .`
 6. `python -m venv tempest_venv`
 7. `source tempest_venv/bin/activate`
 8. Run the code!: `python tempest_api_client.py`
-

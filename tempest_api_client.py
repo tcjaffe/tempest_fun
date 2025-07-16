@@ -1,5 +1,6 @@
 """A toy client for calling the Tempest Weather Station REST API"""
 
+import datetime
 import os
 import requests
 
@@ -20,7 +21,7 @@ def get_stations(token: str) -> list:
 
 def get_device(token: str, device_id: str) -> dict:
     """Returns a dict representation of this device."""
-    url = BASE_URL + f"observations?device_id={device_id}&token={token}"
+    url = BASE_URL + f"observations/device/{device_id}?token={token}"
     response = requests.get(url=url, timeout=30)
     return response.json()
 
@@ -29,7 +30,16 @@ tok = get_token()
 stations = get_stations(tok)
 
 for station in stations:
+    print(f"pull devices for station {station}")
     for device in station['devices']:
         did = device['device_id']
+
         print(f"device data for {did}:")
-        print(get_device(device_id=did, token=tok))
+        device_data = get_device(device_id=did, token=tok)
+        print(device_data)
+
+        if 'obs' in device_data:
+            for ob in device_data['obs']:
+                last_seen = datetime.datetime.fromtimestamp(float(ob[0]))
+                print(
+                    f'This device was last heard from at {last_seen}')
