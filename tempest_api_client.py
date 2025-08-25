@@ -9,7 +9,7 @@ import requests
 # pylint: disable-next=import-error
 import websockets
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     stations = get_stations(tok)
 
     for station in stations:
-        logger.info("Pull devices for station {station['station_id']}")
+        logger.info("Pull devices for station %s", station['station_id'])
         for device in station['devices']:
             did = device['device_id']
 
