@@ -1,9 +1,17 @@
 """A toy client for calling the Tempest Weather Station REST API"""
 
+import asyncio
 import datetime
 import json
+import logging
 import os
 import requests
+# pylint: disable-next=import-error
+import websockets
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 BASE_URL = "https://swd.weatherflow.com/swd/rest/"
 
@@ -124,20 +132,40 @@ def parse_observation(obs: dict, device_type: str) -> ObservationBase:
     raise NotImplementedError()
 
 
-tok = get_token()
-stations = get_stations(tok)
+async def listen(token: str, device_id: str):
+    """Listen for observations and events on the given device."""
+    async with websockets.connect(f'wss://ws.weatherflow.com/swd/data?token={token}') as websocket:
+        message = {
+            "type": "listen_start",
+            "device_id": device_id,
+            "id": "2098388936"
+        }
+        # Send the message to the server
+        await websocket.send(json.dumps(message))
+        # Process the responses
+        async for response in websocket:
+            if response:
+                logger.info("Received: {response}")
 
-for station in stations:
-    print(f"Pull devices for station {station['station_id']}")
-    for device in station['devices']:
-        did = device['device_id']
+if __name__ == "__main__":
 
-        device_data = get_device(device_id=did, token=tok)
+    tok = get_token()
+    stations = get_stations(tok)
 
-        if 'obs' in device_data:
-            for ob in device_data['obs']:
-                last_seen = datetime.datetime.fromtimestamp(float(ob[0]))
-                print(
-                    f'Device with id {did} was last heard from at {last_seen}')
-                x = parse_observation(ob, device_data['type'])
-                print(x)
+    for station in stations:
+        logger.info("Pull devices for station {station['station_id']}")
+        for device in station['devices']:
+            did = device['device_id']
+
+            device_data = get_device(device_id=did, token=tok)
+
+            if 'obs' in device_data:
+                for ob in device_data['obs']:
+                    last_seen = datetime.datetime.fromtimestamp(float(ob[0]))
+                    logger.info(
+                        'Device with id {did} was last heard from at {last_seen}')
+                    x = parse_observation(ob, device_data['type'])
+                    logger.info(x)
+
+            logger.info("Listen for observations and events on device {did}")
+            asyncio.run(listen(tok, did))
