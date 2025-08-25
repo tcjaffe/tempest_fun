@@ -145,7 +145,7 @@ async def listen(token: str, device_id: str):
         # Process the responses
         async for response in websocket:
             if response:
-                logger.info("Received: {response}")
+                logger.info("Received: %s", response)
 
 if __name__ == "__main__":
 
@@ -163,9 +163,10 @@ if __name__ == "__main__":
                 for ob in device_data['obs']:
                     last_seen = datetime.datetime.fromtimestamp(float(ob[0]))
                     logger.info(
-                        'Device with id {did} was last heard from at {last_seen}')
+                        "Device with id %s was last heard from at %s", did, last_seen)
                     x = parse_observation(ob, device_data['type'])
                     logger.info(x)
 
-            logger.info("Listen for observations and events on device {did}")
-            asyncio.run(listen(tok, did))
+                logger.info(
+                    "Listen for observations and events on device %s", did)
+                asyncio.run(listen(tok, did))
