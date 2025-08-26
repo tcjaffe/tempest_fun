@@ -1,10 +1,11 @@
-"""A toy client for calling the Tempest Weather Station REST API"""
+"""A toy client for calling the Tempest Weather Station REST and websocket APIs"""
 
 import asyncio
 import datetime
 import json
 import logging
 import os
+import uuid
 import requests
 # pylint: disable-next=import-error
 import websockets
@@ -139,7 +140,7 @@ async def listen(token: str, device_id: str):
         message = {
             "type": "listen_start",
             "device_id": device_id,
-            "id": "2098388936"
+            "id": str(uuid.uuid4())
         }
         # Send the message to the server
         await websocket.send(json.dumps(message))
