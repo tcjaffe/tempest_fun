@@ -134,6 +134,7 @@ def parse_observation(obs: dict, device_type: str) -> ObservationBase:
 
 async def listen(token: str, device_id: str):
     """Listen for observations and events on the given device."""
+    logger.info("Listen for observations and events on device %s", device_id)
     async with websockets.connect(f'wss://ws.weatherflow.com/swd/data?token={token}') as websocket:
         message = {
             "type": "listen_start",
@@ -146,11 +147,20 @@ async def listen(token: str, device_id: str):
         async for response in websocket:
             if response:
                 logger.info("Received: %s", response)
+                device_info = json.loads(response)
+                if 'obs' in device_info:
+                    logger.info("Observations:")
+                    for ob in device_info['obs']:
+                        logger.info(parse_observation(ob, device_info['type']))
 
-if __name__ == "__main__":
+
+async def main():
+    """The main function to test this script."""
 
     tok = get_token()
     stations = get_stations(tok)
+
+    listenable_devices = []
 
     for station in stations:
         logger.info("Pull devices for station %s", station['station_id'])
@@ -167,6 +177,12 @@ if __name__ == "__main__":
                     x = parse_observation(ob, device_data['type'])
                     logger.info(x)
 
-                logger.info(
-                    "Listen for observations and events on device %s", did)
-                asyncio.run(listen(tok, did))
+                listenable_devices.append(did)
+
+    if listenable_devices:
+        tasks = [listen(tok, did) for did in listenable_devices]
+        await asyncio.gather(*tasks)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
