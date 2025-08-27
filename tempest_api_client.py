@@ -22,7 +22,7 @@ def get_token() -> str:
     return os.getenv('TEMPEST_TOKEN')
 
 
-def get_stations(token: str) -> list:
+def get_stations(token: str) -> list[dict]:
     """Returns a list of stations associated with this token."""
     url = BASE_URL + f"stations?token={token}"
     response = requests.get(url=url, timeout=30)
@@ -133,7 +133,7 @@ def parse_observation(obs: dict, device_type: str) -> ObservationBase:
     raise NotImplementedError()
 
 
-async def listen(token: str, device_id: str):
+async def listen(token: str, device_id: str) -> None:
     """Listen for observations and events on the given device."""
     logger.info("Listen for observations and events on device %s", device_id)
     async with websockets.connect(f'wss://ws.weatherflow.com/swd/data?token={token}') as websocket:
@@ -155,12 +155,15 @@ async def listen(token: str, device_id: str):
                         logger.info(parse_observation(ob, device_info['type']))
 
 
-async def main():
-    """The main function to test this script."""
+async def listen_for_updates(tok: str, listenable_devices: list[str]) -> None:
+    """Listen for updates on the provided list of devices."""
+    if listenable_devices:
+        tasks = [listen(tok, did) for did in listenable_devices]
+        await asyncio.gather(*tasks)
 
-    tok = get_token()
-    stations = get_stations(tok)
 
+def get_listenable_devices(tok: str, stations: list[dict]) -> list[str]:
+    """Returns list of devices that can provide observation data."""
     listenable_devices = []
 
     for station in stations:
@@ -179,10 +182,18 @@ async def main():
                     logger.info(x)
 
                 listenable_devices.append(did)
+    return listenable_devices
 
-    if listenable_devices:
-        tasks = [listen(tok, did) for did in listenable_devices]
-        await asyncio.gather(*tasks)
+
+async def main():
+    """Query data for all available stations and then listen for updates."""
+
+    tok = get_token()
+    stations = get_stations(tok)
+
+    listenable_devices = get_listenable_devices(tok, stations)
+
+    await listen_for_updates(tok, listenable_devices)
 
 
 if __name__ == "__main__":
