@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-BASE_URL = "https://swd.weatherflow.com/swd/rest/"
+BASE_URL = "https://swd.weatherflow.com/swd/rest"
 
 
 def get_token() -> str:
@@ -24,14 +24,14 @@ def get_token() -> str:
 
 def get_stations(token: str) -> list[dict]:
     """Returns a list of stations associated with this token."""
-    url = BASE_URL + f"stations?token={token}"
+    url = f"{BASE_URL}/stations?token={token}"
     response = requests.get(url=url, timeout=30)
     return response.json()['stations']
 
 
 def get_device(token: str, device_id: str) -> dict:
     """Returns a dict representation of this device."""
-    url = BASE_URL + f"observations/device/{device_id}?token={token}"
+    url = f"{BASE_URL}/observations/device/{device_id}?token={token}"
     response = requests.get(url=url, timeout=30)
     return response.json()
 
@@ -135,24 +135,37 @@ def parse_observation(obs: dict, device_type: str) -> ObservationBase:
 
 async def listen(token: str, device_id: str) -> None:
     """Listen for observations and events on the given device."""
-    logger.info("Listen for observations and events on device %s", device_id)
-    async with websockets.connect(f'wss://ws.weatherflow.com/swd/data?token={token}') as websocket:
+    async with get_websocket_connection(token) as websocket:
+
+        # Start listening
         message = {
             "type": "listen_start",
             "device_id": device_id,
             "id": str(uuid.uuid4())
         }
-        # Send the message to the server
         await websocket.send(json.dumps(message))
+        logger.info(
+            "Now listening for observations and events on device %s", device_id)
+
         # Process the responses
         async for response in websocket:
             if response:
                 logger.info("Received: %s", response)
-                device_info = json.loads(response)
-                if 'obs' in device_info:
-                    logger.info("Observations:")
-                    for ob in device_info['obs']:
-                        logger.info(parse_observation(ob, device_info['type']))
+                process_websocket_response(response)
+
+
+def process_websocket_response(response: str | bytes) -> None:
+    """Process the response from the websocket."""
+    device_info = json.loads(response)
+    if 'obs' in device_info:
+        logger.info("Observations:")
+        for ob in device_info['obs']:
+            logger.info(parse_observation(ob, device_info['type']))
+
+
+def get_websocket_connection(token: str) -> websockets.connect:
+    """Returns a websocket connection to the tempest API for devices associated with the token."""
+    return websockets.connect(f'wss://ws.weatherflow.com/swd/data?token={token}')
 
 
 async def listen_for_updates(tok: str, listenable_devices: list[str]) -> None:
@@ -169,19 +182,25 @@ def get_listenable_devices(tok: str, stations: list[dict]) -> list[str]:
     for station in stations:
         logger.info("Pull devices for station %s", station['station_id'])
         for device in station['devices']:
-            did = device['device_id']
+            # Only bother with 'ST' type devices.
+            # The list actually includes the hub, too, so you need to exclude that.
+            if 'ST' == device['device_type']:
 
-            device_data = get_device(device_id=did, token=tok)
-
-            if 'obs' in device_data:
-                for ob in device_data['obs']:
-                    last_seen = datetime.datetime.fromtimestamp(float(ob[0]))
-                    logger.info(
-                        "Device with id %s was last heard from at %s", did, last_seen)
-                    x = parse_observation(ob, device_data['type'])
-                    logger.info(x)
-
+                # Add it to our list of devices to listen for updates on.
+                did = device['device_id']
                 listenable_devices.append(did)
+                device_data = get_device(device_id=did, token=tok)
+
+                # Log the latest observation(s) on that device.
+                if 'obs' in device_data:
+                    for ob in device_data['obs']:
+                        last_seen = datetime.datetime.fromtimestamp(
+                            float(ob[0]))
+                        logger.info(
+                            "Device with id %s was last heard from at %s"
+                            + "with the following observations:", did, last_seen)
+                        logger.info(parse_observation(ob, device_data['type']))
+
     return listenable_devices
 
 
@@ -190,7 +209,6 @@ async def main():
 
     tok = get_token()
     stations = get_stations(tok)
-
     listenable_devices = get_listenable_devices(tok, stations)
 
     await listen_for_updates(tok, listenable_devices)
