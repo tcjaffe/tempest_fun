@@ -156,7 +156,9 @@ async def listen(token: str, device_id: str) -> None:
 
 
 def process_websocket_response(response: str | bytes) -> None:
-    """Process the response from the websocket."""
+    """ Process the response from the websocket.
+        NOTE: Right now it just logs the observation data.
+    """
     device_info = json.loads(response)
     if 'obs' in device_info:
         logger.info("Observations:")
@@ -169,10 +171,10 @@ def get_websocket_connection(token: str) -> websockets.connect:
     return websockets.connect(f'wss://ws.weatherflow.com/swd/data?token={token}')
 
 
-async def listen_for_updates(tok: str, listenable_devices: list[str]) -> None:
+async def listen_for_updates(token: str, listenable_devices: list[str]) -> None:
     """Listen for updates on the provided list of devices."""
     if listenable_devices:
-        tasks = [listen(tok, did) for did in listenable_devices]
+        tasks = [listen(token, did) for did in listenable_devices]
         await asyncio.gather(*tasks)
 
 
