@@ -52,6 +52,7 @@ class ObservationBase:
 # pylint: disable-next=too-few-public-methods,too-many-instance-attributes
 class Observation(ObservationBase):
     """Represents observation data returned by the Tempest Weather Station."""
+    timestamp: float
     wind_lull: float
     """In m/s"""
     wind_avr: float
@@ -99,7 +100,7 @@ class Observation(ObservationBase):
         # self.timestamp = datetime.datetime.fromtimestamp(raw_obs[0], tz=datetime.timezone.utc)
         # I changed how timestamp is stored so it would be easy to print this object.
         # That's not great, but so far I don't need it for anything else.
-        self.timestamp = raw_obs[0]
+        self.timestamp = float(raw_obs[0])
         self.wind_lull = raw_obs[1]
         self.wind_avr = raw_obs[2]
         self.wind_gust = raw_obs[3]
@@ -194,12 +195,13 @@ def get_listenable_devices(tok: str, stations: list[dict]) -> list[str]:
                 # Log the latest observation(s) on that device.
                 if 'obs' in device_data:
                     for ob in device_data['obs']:
+                        parsed = parse_observation(ob, device_data['type'])
                         last_seen = datetime.datetime.fromtimestamp(
-                            float(ob[0]))
+                            parsed.timestamp)
                         logger.info(
                             "Device with id %s was last heard from at %s"
                             + "with the following observations:", did, last_seen)
-                        logger.info(parse_observation(ob, device_data['type']))
+                        logger.info(parsed)
 
     return listenable_devices
 
