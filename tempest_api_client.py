@@ -203,7 +203,6 @@ def get_listenable_devices(tok: str, stations: list[dict]) -> list[str]:
                         logger.info(
                             "Device with id %s was last heard from at %s"
                             + "with the following observations:", did, last_seen)
-                        logger.info(parsed)
 
     return listenable_devices
 
