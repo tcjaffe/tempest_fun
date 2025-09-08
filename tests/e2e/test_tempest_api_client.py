@@ -1,7 +1,5 @@
 """End-to-end tests for the tempest_api_client module."""
 
-# NOTE: I need to fix the pylint error.
-# pylint: disable-next=import-error
 from src import tempest_api_client
 
 
